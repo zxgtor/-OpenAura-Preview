@@ -1,25 +1,85 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Open Aura Preview</title>
-  <style>
-    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0b0d0f; color: #eef2f4; }
-    main { width: min(680px, calc(100% - 40px)); }
-    i { display: block; width: 14px; height: 14px; border: 2px solid #b7f34a; border-radius: 50%; box-shadow: 0 0 24px rgba(183,243,74,.45); }
-    h1 { margin: 28px 0 12px; font-size: clamp(38px, 10vw, 72px); letter-spacing: -.05em; }
-    p { color: #9aa4ab; font-size: 17px; line-height: 1.6; }
-    .status { margin-top: 32px; padding-top: 18px; border-top: 1px solid #23282d; color: #b7f34a; font: 12px ui-monospace, monospace; }
-  </style>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071216">
+  <title>OpenAura · Infinite Canvas</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <main>
-    <i></i>
-    <h1>Open Aura</h1>
-    <p>手机 Review 预览站已经建立。这里将自动展示私有 OpenAura 仓库中经过筛选的 Web 界面，不包含源代码、内部文档或真实协作数据。</p>
-    <div class="status">PREVIEW ONLINE · INITIAL DEPLOYMENT</div>
-  </main>
+<body class="is-empty">
+  <div class="shell">
+    <div class="canvas-move-handle" data-tauri-drag-region title="Drag to move window" aria-label="Drag to move window"><span data-tauri-drag-region></span></div>
+    <div class="canvas-controls">
+      <nav class="tools" aria-label="Graph controls">
+        <button id="back" class="icon-button" title="Go back" aria-label="Go back" disabled>←</button>
+        <button id="overview" class="icon-button" title="Show overview" aria-label="Show overview">◎</button>
+        <div class="tool-separator"></div>
+        <button id="zoom-out" class="icon-button" title="Zoom out" aria-label="Zoom out">−</button>
+        <button id="zoom-in" class="icon-button" title="Zoom in" aria-label="Zoom in">+</button>
+      </nav>
+      <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" type="search" autocomplete="off" placeholder="Find work or knowledge" aria-label="Find a node"><kbd>/</kbd></div>
+      <span id="renderer" hidden>2D</span>
+      <button id="close-window" class="icon-button window-close" type="button" aria-label="Close canvas" title="Close canvas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg></button>
+    </div>
+    <button id="canvas-resize" class="canvas-resize-handle" type="button" aria-label="Resize window" title="Drag to resize window"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 20 8-8M16 20l4-4M8 20l12-12"/></svg></button>
+    <nav class="canvas-rail" aria-label="Canvas toolbar">
+      <button id="canvas-toolbar-drag" class="canvas-rail-drag" type="button" aria-label="Drag toolbar to another edge" title="Drag toolbar to another edge"><span></span></button>
+      <button class="canvas-rail-button canvas-rail-add" type="button" aria-label="Add node" title="Add node" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="canvas-rail-button" type="button" aria-label="Assets" title="Assets" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5h6l2 2h9v10h-17zM3.5 7.5v-3h7l2 3"/></svg></button>
+      <button class="canvas-rail-button" type="button" aria-label="Techniques" title="Techniques" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 1.8 7.2L21 11l-7.2 1.8L12 20l-1.8-7.2L3 11l7.2-1.8z"/></svg></button>
+      <span class="canvas-rail-separator" aria-hidden="true"></span>
+      <button class="canvas-rail-button is-active" type="button" aria-label="Select" title="Select" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 14 9-7 1.4L9 20z"/></svg></button>
+      <button class="canvas-rail-button" type="button" aria-label="Hand" title="Hand" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11m0-5.5a1.5 1.5 0 0 1 3 0V11m0-4a1.5 1.5 0 0 1 3 0v4m0-2a1.5 1.5 0 0 1 3 0v5c0 4-2.5 6-6.5 6H11c-1.6 0-2.8-.6-3.7-1.8L4 13.8a1.5 1.5 0 0 1 2.4-1.8L8 14"/></svg></button>
+      <span class="canvas-rail-separator" aria-hidden="true"></span>
+      <button class="canvas-rail-button" type="button" aria-label="Field" title="Field" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5h4m8 0h4v4m0 6v4h-4m-8 0H4v-4M8 12h8M12 8v8"/></svg></button>
+      <button id="canvas-background-button" class="canvas-rail-button" type="button" aria-label="Canvas appearance" aria-controls="canvas-background-menu" aria-expanded="false" aria-haspopup="dialog" title="Canvas appearance"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 12h17M12 3.5v17"/></svg></button>
+      <button class="canvas-rail-button" type="button" aria-label="Search" title="Search" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></button>
+      <button class="canvas-rail-button" type="button" aria-label="Comment" title="Comment" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H8l-4 2v-5.3a8 8 0 1 1 16-4.7z"/></svg></button>
+      <button class="canvas-rail-button" type="button" aria-label="Annotate" title="Annotate" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 18 1 3 3-1L19 9l-4-4zM13 7l4 4M4 4h6M4 8h4"/></svg></button>
+      <span class="canvas-rail-separator" aria-hidden="true"></span>
+      <button class="canvas-rail-button" type="button" aria-label="More tools" title="More tools" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+    </nav>
+    <div id="canvas-background-menu" class="canvas-background-menu" role="dialog" aria-label="Canvas appearance" hidden>
+      <span class="canvas-background-heading">Background</span>
+      <button type="button" data-canvas-background="transparent"><span class="canvas-background-swatch is-transparent"></span>Transparent</button>
+      <button type="button" data-canvas-background="#17191d"><span class="canvas-background-swatch" style="--swatch:#17191d"></span>Charcoal</button>
+      <button type="button" data-canvas-background="#253744"><span class="canvas-background-swatch" style="--swatch:#253744"></span>Slate</button>
+      <button type="button" data-canvas-background="#e9e7e2"><span class="canvas-background-swatch" style="--swatch:#e9e7e2"></span>Ivory</button>
+      <label class="canvas-background-custom"><input id="canvas-custom-background" type="color" value="#405b62" aria-label="Custom background color">Custom color</label>
+      <span class="canvas-background-heading canvas-section-divider">Border</span>
+      <button type="button" data-canvas-border="subtle"><span class="canvas-border-swatch" style="--swatch:#b9d1cf"></span>Subtle (B)</button>
+      <button type="button" data-canvas-border="light"><span class="canvas-border-swatch is-light"></span>Light edge</button>
+      <button type="button" data-canvas-border="none"><span class="canvas-border-swatch is-none"></span>None</button>
+      <button type="button" data-canvas-border="#76d4c9"><span class="canvas-border-swatch" style="--swatch:#76d4c9"></span>Teal</button>
+      <button type="button" data-canvas-border="#e6b676"><span class="canvas-border-swatch" style="--swatch:#e6b676"></span>Amber</button>
+      <label class="canvas-background-custom canvas-border-custom"><input id="canvas-custom-border" type="color" value="#9fc5c0" aria-label="Custom border color">Custom color</label>
+      <span class="canvas-background-heading canvas-section-divider">Toolbar position</span>
+      <div class="canvas-position-options" role="group" aria-label="Toolbar position">
+        <button type="button" data-toolbar-position="left">Left</button>
+        <button type="button" data-toolbar-position="top">Top</button>
+        <button type="button" data-toolbar-position="bottom">Bottom</button>
+        <button type="button" data-toolbar-position="right">Right</button>
+      </div>
+    </div>
+    <main>
+      <canvas id="gpu-space" class="gpu-space" aria-hidden="true" hidden></canvas>
+      <canvas id="space" tabindex="0" aria-label="Interactive knowledge graph. Click a node to focus it. Drag to pan and use the mouse wheel to zoom."></canvas>
+      <div class="view-heading"><span class="eyebrow" id="eyebrow">THE CONNECTED WORKSPACE</span><h1 id="view-title">Everything is connected.</h1><p id="view-subtitle">Explore the work, knowledge and people behind every result.</p></div>
+      <div id="relation-cards" class="relation-cards" aria-label="Connected object types" hidden></div>
+      <aside id="detail" class="detail" aria-labelledby="detail-title" hidden>
+        <div class="detail-top"><span id="detail-kind" class="detail-kind">PROJECT</span><button id="close-detail" class="icon-button" aria-label="Close details">×</button></div>
+        <div class="detail-orb" id="detail-orb" aria-hidden="true"></div>
+        <h2 id="detail-title"></h2><p id="detail-summary" class="detail-summary"></p>
+        <div class="detail-meta"><span id="detail-status"></span><span id="detail-count"></span></div>
+        <p id="detail-body" class="detail-body"></p>
+        <div class="detail-divider"></div><h3>CONNECTED TO</h3><div id="connections" class="connection-list"></div>
+      </aside>
+      <div class="bottom-bar"><div class="legend"><span><i class="dot work"></i> Work</span><span><i class="dot knowledge"></i> Knowledge</span><span><i class="dot result"></i> Results</span><span><i class="dot agent"></i> Agents</span></div><span id="count" class="count"></span><span class="hint">DRAG TO EXPLORE · SCROLL TO ZOOM</span></div>
+      <div id="search-results" class="search-results" hidden></div>
+      <div id="error" class="error" role="alert" hidden></div>
+    </main>
+  </div>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
