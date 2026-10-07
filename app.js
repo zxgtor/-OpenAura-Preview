@@ -1,4 +1,5 @@
 import { createGraphGpu } from './graph-gpu.js'
+import { mountBoard, onActivate } from './canvas-board.js'
 
 const $ = id => document.getElementById(id)
 const canvas = $('space'), ctx = canvas.getContext('2d', { alpha: true })
@@ -408,7 +409,7 @@ function updateSearch(){
 }
 search.addEventListener('input',updateSearch)
 search.addEventListener('keydown',e=>{if(e.key==='Enter')results.querySelector('button:not(:disabled)')?.click();if(e.key==='Escape'){search.value='';results.hidden=true;search.blur()}})
-document.addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==search){e.preventDefault();search.focus()}else if(e.key==='Escape'&&document.activeElement!==search&&state.focus!=='home')setFocus('home')})
+document.addEventListener('keydown',e=>{if(!demoMode || e.target.closest('[contenteditable],input,select'))return;if(e.key==='/'&&document.activeElement!==search){e.preventDefault();search.focus()}else if(e.key==='Escape'&&document.activeElement!==search&&state.focus!=='home')setFocus('home')})
 
 async function loadGraph(){
   try {
@@ -441,26 +442,7 @@ if (!demoMode) {
   const backgroundButton=$('canvas-background-button')
   const backgroundMenu=$('canvas-background-menu')
   const customBackground=$('canvas-custom-background')
-  function addCanvasCard(clientX,clientY) {
-    const bounds=shell.getBoundingClientRect()
-    const card=document.createElement('article')
-    card.className='canvas-card'
-    card.style.left=`${Math.max(12,Math.min(bounds.width-196,clientX-bounds.left-84))}px`
-    card.style.top=`${Math.max(12,Math.min(bounds.height-116,clientY-bounds.top-44))}px`
-    const title=document.createElement('div')
-    title.className='canvas-card-title'
-    title.contentEditable='true'
-    title.spellcheck=true
-    title.textContent='New card'
-    card.append(title)
-    shell.append(card)
-    requestAnimationFrame(()=>{title.focus();document.execCommand?.('selectAll',false,null)})
-  }
-  shell.addEventListener('dblclick',event=>{
-    if (event.target.closest('button,input,.canvas-rail,.canvas-background-menu,.canvas-card')) return
-    event.preventDefault()
-    addCanvasCard(event.clientX,event.clientY)
-  })
+  mountBoard(shell)
   const customBorder=$('canvas-custom-border')
   const backgroundPresets=[...backgroundMenu.querySelectorAll('[data-canvas-background]')]
   const borderPresets=[...backgroundMenu.querySelectorAll('[data-canvas-border]')]
@@ -563,13 +545,13 @@ if (!demoMode) {
   let savedPosition='left'
   try { savedPosition=localStorage.getItem(positionKey)||'left' } catch {}
   setPosition(savedPosition)
-  backgroundButton.addEventListener('click',()=>{
+  onActivate(backgroundButton,()=>{
     const open=backgroundMenu.hidden
     backgroundMenu.hidden=!open
     backgroundButton.setAttribute('aria-expanded',String(open))
     if (open) positionBackgroundMenu()
   })
-  backgroundMenu.addEventListener('click',event=>{
+  for (const button of backgroundMenu.querySelectorAll('button')) onActivate(button,event=>{
     const choice=event.target.closest('[data-canvas-background]')
     const borderChoice=event.target.closest('[data-canvas-border]')
     const positionChoice=event.target.closest('[data-toolbar-position]')
