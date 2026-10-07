@@ -1,5 +1,6 @@
-import { createGraphGpu } from './graph-gpu.js'
-import { mountBoard, onActivate } from './canvas-board.js'
+import { createGraphGpu } from './graph-gpu.js?v=20261007-workbench-1'
+import { createTextBoard } from './workbench.js?v=20261007-workbench-1'
+import { onActivate } from './canvas-board.js?v=20261007-workbench-1'
 
 const $ = id => document.getElementById(id)
 const canvas = $('space'), ctx = canvas.getContext('2d', { alpha: true })
@@ -381,6 +382,7 @@ function hit(x,y) {
   for(const n of state.hit){const d=Math.hypot(x-n.x,y-n.y);if(d<n.r&&d-n.r<score){best=n;score=d-n.r}}
   return best?.id
 }
+if (demoMode) {
 canvas.addEventListener('pointerdown',e=>{if(e.button!==0)return;canvas.setPointerCapture(e.pointerId);state.drag={x:e.clientX,y:e.clientY,px:state.pan.x,py:state.pan.y,moved:false,hit:hit(e.offsetX,e.offsetY)}})
 canvas.addEventListener('pointermove',e=>{
   if(state.drag){const dx=e.clientX-state.drag.x,dy=e.clientY-state.drag.y;if(Math.hypot(dx,dy)>4)state.drag.moved=true;if(state.drag.moved)state.pan={x:state.drag.px+dx,y:state.drag.py+dy}}
@@ -390,6 +392,7 @@ canvas.addEventListener('pointerup',e=>{if(state.drag&&!state.drag.moved&&state.
 canvas.addEventListener('pointercancel',()=>{state.drag=null})
 canvas.addEventListener('wheel',e=>{e.preventDefault();state.zoom=Math.max(.52,Math.min(2.5,state.zoom*Math.exp(-e.deltaY*.0012)))},{passive:false})
 canvas.addEventListener('keydown',e=>{if(e.key==='Enter'&&state.hover)setFocus(state.hover);if(e.key==='ArrowLeft')state.pan.x+=40;if(e.key==='ArrowRight')state.pan.x-=40;if(e.key==='ArrowUp')state.pan.y+=40;if(e.key==='ArrowDown')state.pan.y-=40})
+}
 
 $('back').addEventListener('click',()=>{const id=state.history.pop();if(id)setFocus(id,false)})
 $('overview').addEventListener('click',()=>setFocus('home'))
@@ -425,14 +428,24 @@ async function loadGraph(){
 }
 if (demoMode) loadGraph()
 document.getElementById('close-window').addEventListener('click',()=>window.__TAURI__?.core?.invoke('hide_window'))
-document.getElementById('canvas-resize').addEventListener('pointerdown',event=>{
-  if (event.button!==0) return
-  event.preventDefault()
-  const resize=window.__TAURI__?.core?.invoke('canvas_resize',{direction:'se'})
-  resize?.catch(error=>console.error('Canvas resize failed',error))
-})
-
 if (!demoMode) {
+  const native=window.__TAURI__
+  if(native?.core?.invoke) {
+    let windowQuery=0
+    const syncWindow=async()=>{
+      const query=++windowQuery
+      try {
+        const status=await native.core.invoke('canvas_window_state')
+        if(query===windowQuery)document.body.classList.toggle('is-fullscreen',status.fullscreen===true)
+      } catch(error) { console.warn('Canvas window state unavailable',error) }
+    }
+    syncWindow()
+    window.addEventListener('resize',syncWindow)
+    native.event?.listen('core://window-shown',syncWindow).catch(error=>console.warn('Canvas window events unavailable',error))
+  } else {
+    document.body.classList.toggle('is-fullscreen',new URLSearchParams(location.search).has('fullscreen'))
+  }
+  createTextBoard({button:$('canvas-add-text'),layer:$('board-layer'),canvas,state,error:$('error')})
   const backgroundKey='openaura.infinite-canvas.background.v1'
   const borderKey='openaura.infinite-canvas.border.v1'
   const positionKey='openaura.infinite-canvas.toolbar-position.v1'
@@ -442,7 +455,6 @@ if (!demoMode) {
   const backgroundButton=$('canvas-background-button')
   const backgroundMenu=$('canvas-background-menu')
   const customBackground=$('canvas-custom-background')
-  mountBoard(shell)
   const customBorder=$('canvas-custom-border')
   const backgroundPresets=[...backgroundMenu.querySelectorAll('[data-canvas-background]')]
   const borderPresets=[...backgroundMenu.querySelectorAll('[data-canvas-border]')]
@@ -452,6 +464,13 @@ if (!demoMode) {
   function setBackground(value) {
     if (!validBackground(value)) return
     shell.style.setProperty('--canvas-background',value)
+    if (value==='transparent') shell.dataset.canvasTone='transparent'
+    else {
+      const channels=[1,3,5].map(index=>parseInt(value.slice(index,index+2),16)/255)
+      const linear=channel=>channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4
+      const luminance=.2126*linear(channels[0])+.7152*linear(channels[1])+.0722*linear(channels[2])
+      shell.dataset.canvasTone=luminance>.22?'light':'dark'
+    }
     backgroundPresets.forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.canvasBackground===value)))
     backgroundMenu.querySelector('.canvas-background-custom').classList.toggle('is-selected',value!=='transparent'&&!backgroundPresets.some(button=>button.dataset.canvasBackground===value))
     if (value!=='transparent') customBackground.value=value

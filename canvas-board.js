@@ -1,4 +1,4 @@
-import { boardKey, restoreBoard, emptyBoard, toWorld, zoomAt, connectionCurve, connect, workView } from './board-model.mjs'
+import { boardKey, restoreBoard, emptyBoard, toWorld, zoomAt, connectionCurve, connect, workView } from './board-model.mjs?v=20261007-workbench-1'
 
 const ns = 'http://www.w3.org/2000/svg'
 const svgNode = (tag, attrs = {}) => { const node = document.createElementNS(ns, tag); for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value); return node }
